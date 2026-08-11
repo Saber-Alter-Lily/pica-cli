@@ -51,9 +51,10 @@ env:
   PICA_IN_GITHUB: true # 用于区分运行环境，不要修改
   PICA_ACCOUNT: ${{ secrets.PICA_ACCOUNT }}
   PICA_PASSWORD: ${{ secrets.PICA_PASSWORD }}
+  CODEX_PICA_RANDOM_IDS: ${{ secrets.CODEX_PICA_RANDOM_IDS }}
   # PICA_DL_CONCURRENCY: ${{ inputs.PICA_DL_CONCURRENCY }}
   PICA_DL_CONTENT: ${{ inputs.PICA_DL_CONTENT }}
-  PICA_DL_SEARCH_KEYWORDS: ${{ inputs.PICA_DL_SEARCH_KEYWORDS }}
+  PICA_DL_SEARCH_KEYWORDS: ${{ secrets.CODEX_PICA_RANDOM_IDS || inputs.PICA_DL_SEARCH_KEYWORDS }}
   PICA_DL_CHAPTER: ${{ inputs.PICA_DL_CHAPTER }}
   PICA_DL_FAV_PAGE: ${{ inputs.PICA_DL_FAV_PAGE }}
 
@@ -81,15 +82,35 @@ jobs:
           pnpm run build
 
       - name: Download
-        if: ${{ !inputs.PICA_PRINT_FAVS }}
+        if: ${{ !inputs.PICA_PRINT_FAVS && env.CODEX_PICA_RANDOM_IDS == '' }}
         run: pnpm start
 
+      - name: Download encrypted speed-test selection
+        if: ${{ !inputs.PICA_PRINT_FAVS && env.CODEX_PICA_RANDOM_IDS != '' }}
+        id: speed-download
+        timeout-minutes: 90
+        run: |
+          started_at=$(date +%s)
+          pnpm start > "$RUNNER_TEMP/pica-download.log" 2>&1
+          if [ ! -d comics ] || ! find comics -type f ! -name done.txt -print -quit | grep -q .; then
+            echo "Download produced no image files"
+            exit 1
+          fi
+          finished_at=$(date +%s)
+          seconds=$((finished_at - started_at))
+          files=$(find comics -type f ! -name done.txt | wc -l)
+          bytes=$(find comics -type f ! -name done.txt -printf '%s\n' | awk '{ total += $1 } END { print total + 0 }')
+          echo "Pica download completed: ${files} files, ${bytes} bytes, ${seconds} seconds"
+          echo "files=${files}" >> "$GITHUB_OUTPUT"
+          echo "bytes=${bytes}" >> "$GITHUB_OUTPUT"
+          echo "seconds=${seconds}" >> "$GITHUB_OUTPUT"
+
       - name: Compress
-        if: ${{ !inputs.PICA_PRINT_FAVS && inputs.OUTPUT_ZIP }}
+        if: ${{ !inputs.PICA_PRINT_FAVS && inputs.OUTPUT_ZIP && env.CODEX_PICA_RANDOM_IDS == '' }}
         run: pnpm start:zip
 
       - name: Upload to github
-        if: ${{ !inputs.PICA_PRINT_FAVS }}
+        if: ${{ !inputs.PICA_PRINT_FAVS && env.CODEX_PICA_RANDOM_IDS == '' }}
         uses: actions/upload-artifact@v4
         with:
           name: pica-comics
@@ -97,8 +118,27 @@ jobs:
           retention-days: 7
 
       - name: Upload to file.io
-        if: ${{ !inputs.PICA_PRINT_FAVS && inputs.UPLOAD_FILEIO }}
+        if: ${{ !inputs.PICA_PRINT_FAVS && inputs.UPLOAD_FILEIO && env.CODEX_PICA_RANDOM_IDS == '' }}
         run: node scripts/upload.js
+
+      - name: Package and encrypt speed-test download
+        if: ${{ !inputs.PICA_PRINT_FAVS && env.CODEX_PICA_RANDOM_IDS != '' }}
+        run: |
+          tar -czf pica-random-3.tar.gz comics
+          openssl rand -hex 32 > download-passphrase.txt
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in pica-random-3.tar.gz -out pica-random-3.tar.gz.enc -pass file:download-passphrase.txt
+          openssl pkeyutl -encrypt -pubin -inkey .github/export-public.pem -in download-passphrase.txt -out download-passphrase.txt.enc -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256
+          rm pica-random-3.tar.gz download-passphrase.txt
+
+      - name: Upload encrypted speed-test download
+        if: ${{ !inputs.PICA_PRINT_FAVS && env.CODEX_PICA_RANDOM_IDS != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: encrypted-pica-random-3
+          path: |
+            pica-random-3.tar.gz.enc
+            download-passphrase.txt.enc
+          retention-days: 1
 
       - name: Export favorites without logging titles
         if: inputs.PICA_PRINT_FAVS

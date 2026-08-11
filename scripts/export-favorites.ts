@@ -15,7 +15,18 @@ async function main() {
     }
 
     const pica = new Pica()
-    await pica.login(account, password)
+    try {
+        const result = await pica.request<string>('post', 'auth/sign-in', {
+            email: account,
+            password
+        })
+        if (!result.token) {
+            throw new Error('successful response did not include a token')
+        }
+        pica.token = result.token
+    } catch (error) {
+        throw new Error(`Pica login request failed: ${String(error)}`)
+    }
     const { comics } = await pica.favoritesAll()
 
     const headers = [

@@ -26,6 +26,21 @@ export type Comic = {
     title: string
     tags: string[]
     _id: string
+    thumb?: {
+        originalName: string
+        path: string
+        fileServer: string
+    }
+    pagesCount?: number
+    epsCount?: number
+    allowDownload?: boolean
+    allowComment?: boolean
+    totalComments?: number
+    likesCount?: number
+    viewsCount?: number
+    commentsCount?: number
+    isFavourite?: boolean
+    isLiked?: boolean
 }
 
 export type PageFavorites = Page<Comic>
@@ -53,6 +68,7 @@ export interface Picture {
 
 export interface Episode {
     id: string
+    _id?: string
     title: string
     order: number
     updated_at: string

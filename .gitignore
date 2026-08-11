@@ -1,4 +1,9 @@
 comics/
+.pica-library/
+pica-library-data/
+*.db
+*.db-shm
+*.db-wal
 comics-zip/
 tmp/
 stats.html

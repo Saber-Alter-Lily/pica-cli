@@ -1,22 +1,25 @@
 {
-  "name": "pica-cli",
+  "name": "pica-library-cli",
   "author": "justorez",
-  "version": "1.5.3",
-  "description": "😉 哔咔漫画下载器",
-  "packageManager": "pnpm@9.0.0",
+  "version": "2.0.0-alpha.1",
+  "description": "A layered Pica library manager with Lite web, local web, and CLI modes",
+  "packageManager": "pnpm@11.16.0",
   "type": "module",
   "bin": {
     "pica-cli": "dist/index.js",
+    "pica-library": "dist/library-cli.js",
     "pica-zip": "dist/zip.js"
   },
   "scripts": {
     "postinstall": "simple-git-hooks",
     "dev": "tsx src/index.ts",
+    "dev:library": "tsx src/library-cli.ts",
     "dev:zip": "tsx src/zip.ts",
     "start": "node dist/index.js",
     "start:zip": "node dist/zip.js",
     "build": "rimraf dist && rollup --config rollup.config.js",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "pub": "pnpm build && npm publish",
     "type:check": "tsc --incremental --noEmit",
     "lint": "eslint --cache --ignore-path .gitignore .",
@@ -42,18 +45,19 @@
     "registry": "https://registry.npmjs.org/"
   },
   "files": [
-    "dist"
+    "dist",
+    "web"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=22.5"
   },
-  "homepage": "https://github.com/justorez/pica-cli",
+  "homepage": "https://github.com/Saber-Alter-Lily/pica-cli",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/justorez/pica-cli.git"
+    "url": "git+https://github.com/Saber-Alter-Lily/pica-cli.git"
   },
   "bugs": {
-    "url": "https://github.com/justorez/pica-cli/issues"
+    "url": "https://github.com/Saber-Alter-Lily/pica-cli/issues"
   },
   "keywords": [
     "pica",
@@ -61,8 +65,8 @@
     "cli",
     "inquirer",
     "download",
-    "哔咔",
-    "漫画"
+    "library",
+    "metadata"
   ],
   "license": "MIT",
   "devDependencies": {
@@ -77,7 +81,7 @@
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@types/adm-zip": "^0.5.5",
     "@types/debug": "^4.1.12",
-    "@types/node": "^20.11.7",
+    "@types/node": "^24.0.0",
     "@types/progress": "^2.0.7",
     "@typescript-eslint/eslint-plugin": "^6.20.0",
     "@typescript-eslint/parser": "^6.20.0",

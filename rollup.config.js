@@ -14,6 +14,7 @@ const pkg = JSON.parse(
 export default defineConfig({
     input: {
         index: 'src/index.ts',
+        'library-cli': 'src/library-cli.ts',
         zip: 'src/zip.ts'
     },
     output: {

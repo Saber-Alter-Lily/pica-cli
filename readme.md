@@ -1,127 +1,127 @@
-# pica-cli
+# Pica Library
 
-[![NPM Version](https://img.shields.io/npm/v/pica-cli?style=flat-square)](https://www.npmjs.com/package/pica-cli)
-[![publish](https://img.shields.io/github/actions/workflow/status/justorez/pica-cli/publish.yml?style=flat-square&logo=github&label=publish
-)](https://github.com/justorez/pica-cli/actions/workflows/publish.yml)
-[![Commitizen friendly](https://img.shields.io/badge/commitizen-friendly-brightgreen.svg?style=flat-square)](http://commitizen.github.io/cz-cli/)
+一个本地优先的漫画收藏管理与增量下载工具。它保留原 `pica-cli` 的站内检索和下载能力，同时增加作者归一、Tag 筛选、热度排序、下载进度与可迁移的 Lite 网页。
 
-😉 哔咔漫画下载器
+> 当前版本：`2.0.0-alpha.1`。请只下载你有权访问和保存的内容，遵守服务条款、当地法律以及创作者的权利。
 
-![演示](https://s2.loli.net/2024/02/01/Qc7L3qGZOWBPmkR.gif)
+## 三种使用层次
 
-- 排行榜：下载当前排行榜的全部漫画
-- 收藏夹：下载当前用户收藏夹的全部漫画
-- 搜索：支持关键字和漫画ID (多个用 # 隔开)。访问哔咔电脑端网站，进入漫画详情，地址栏链接里的 `cid` 就是漫画ID
-- 自动过滤已下载的章节和图片，不会重复下载
-- 按章节批量压缩，配合支持 zip 的漫画阅读软件使用，比如 [Perfect Viewer](https://play.google.com/store/apps/details?id=com.rookiestudio.perfectviewer)。不限于 `pica-cli` 下载的漫画，只要符合 [cmoics/漫画标题/漫画章节/漫画图片](#) 的目录结构即可。
-- 借助 github action 实现飞速下载，支持从 github artifact 和 file.io 两种方式下载完整漫画包。file.io 无需注册，无需科学上网，文件保存两周，单文件最大 2GB，注意链接只能下载**一次**，下载后文件会自动删除
-- [更新日志](#更新日志)
+| 层次 | 适合场景 | 数据位置 | 站内连接与下载 |
+| --- | --- | --- | --- |
+| GitHub Pages Lite | 临时整理、筛选、作者审核、生成计划 | 浏览器 IndexedDB | 不支持 |
+| 本地网页完整版 | 日常管理、同步、搜索、下载 | 本地 SQLite 与文件系统 | 支持 |
+| CLI | 批处理、NAS、脚本和自动化 | 本地 SQLite 与文件系统 | 支持 |
 
-如果用的开心，求个 star 支持一下，比心 ~ ❤️
+Lite 与完整版使用同一套网页。页面能访问本地 API 时自动进入完整版，否则进入 Lite 模式。Lite 可导出作者字典和下载计划，随后交给本地完整版执行。
 
-## 用法
+## 第一版能力
 
-### 方式一：GitHub Action（推荐）
+- 导入收藏夹 CSV，或通过账号从站内同步收藏元数据。
+- 将 `社团（作者）`、全半角和空白差异归一成作者候选；低置信度结果进入人工审核。
+- 手动合并作者别名，并导入/导出可迁移的作者字典。
+- 按作者、Tag、分类、完成状态筛选，按更新时间、爱心、浏览量或综合分排序。
+- 站内关键词、Tag、分类搜索；搜索结果可直接交给下载器。
+- 按漫画、章节和图片稳定 ID 记录进度；重复执行只补缺失图片。
+- 对已有下载按规范作者和社团生成视图目录，不复制漫画文件。
+- 保留原有 `pica-cli`、`pica-zip` 命令以兼容旧用法。
 
-> ❗️**一次性下载大量漫画，可能会导致 Action 磁盘空间不足或者长时间运行导致任务失败，所以不要一次性下载太多**
+## 快速开始
 
-利用 github 的免费服务器下载，最关键的是不用科学上网，网速飞快，孩子用了都说好。
-
-```bash
-# 必填，账号名
-PICA_ACCOUNT
-# 必填，账号密码
-PICA_PASSWORD
-```
-
-Fork 一份[本仓库](https://github.com/justorez/pica-cli)，将上面两个环境变量，设置为仓库密钥：
-
-![action secret](https://s2.loli.net/2024/01/30/5FxU7olyWC3VAe1.png)
-
-然后点击 Actions，再点击左侧的 `task` 工作流，再点击右侧的 `Run workflow`，输入相关的信息，点击运行。
-
-针对收藏夹漫画太多的情况，已支持指定页码，每次只下载收藏夹的某一页即可。
-
-![action run](https://s2.loli.net/2024/01/30/PmfublZKLFQrth9.png)
-
-等执行完之后，进入详情，在最下方有漫画的完整压缩包，点击下载即可。
-
-![artifact](https://s2.loli.net/2024/01/31/rIlTGfy8O5HiFcV.png)
-
-点击 job 详情查看日志，可以看到 file.io 的下载地址：
-
-![file.io](https://s2.loli.net/2024/01/31/UT4i6zpGjYvDxL3.png)
-
-如果你想自定义过程，请自行修改 [.github/workflows/task.yml](.github/workflows/task.yml)。
-
-### 方式二：直接安装
+需要 Node.js 22.5 或更高版本，推荐 Node.js 24。
 
 ```bash
-pnpm add pica-cli -g
-```
-在自己电脑上配置好环境变量，所需的环境变量如下所示：
-
-```bash
-# 账号名
-# 若无配置，会提示手动输入
-PICA_ACCOUNT=
-# 账号密码
-# 若无配置，会提示手动输入
-PICA_PASSWORD=
-# 代理地址，示例：http://127.0.0.1:7890
-PICA_PROXY=
-# 下载图片的并发数，默认 5
-PICA_DL_CONCURRENCY=5
-# search | favorites | leaderboard
-# 下载内容，分别表示：搜索 | 收藏夹 | 排行榜
-PICA_DL_CONTENT=
-# 搜索关键字或漫画ID，多个用 # 隔开
-# 尽量输入完整漫画名，避免返回过多结果
-PICA_DL_SEARCH_KEYWORDS=
-```
-
-```bash
-# 运行
-pica-cli
-
-# 漫画打压缩包
-pica-zip
-```
-
-## 开发
-
-```bash
-git clone https://github.com/justorez/pica-cli.git
-```
-
-拷贝一份 [.env.template](.env.template)，命名为 `.env.local`，填写好后就不用设置环境变量了，配置优先从 `.env.local` 里加载。
-
-```bash
-# 安装依赖
+git clone https://github.com/Saber-Alter-Lily/pica-cli.git
+cd pica-cli
 pnpm install
-
-# 运行
-pnpm dev
-
-# 漫画打压缩包
-pnpm dev:zip
+pnpm build
 ```
 
-[哔咔 API 文档（非官方）](https://www.apifox.cn/apidoc/shared-44da213e-98f7-4587-a75e-db998ed067ad/doc-1034189)。
+初始化并打开本地网页：
 
-## 更新日志
+```bash
+node dist/library-cli.js init
+node dist/library-cli.js serve
+```
 
-- 2024/06/02 支持下载收藏夹指定页
-- 2024/05/27 修复收藏夹只获取了第一页
-- 2024/04/27 处理响应 400 异常：被禁止访问的漫画
-- 2024/02/21 支持通过命令行输入账号密码，硬编码密钥
-- 2024/02/08 支持下载指定章节
-- 2024/02/01 支持通过漫画ID精确下载
-- 2024/01/31 github action 同时将漫画包上传到 file.io
-- 2024/01/30 提供 github action 的下载方式
-- 2024/01/29 下载完成后，提供命令把漫画按章节批量压缩
-- 2024/01/28 完成基本功能
+浏览器打开 `http://127.0.0.1:4789`。服务默认只监听本机，不会把账号、数据库或漫画暴露到公网。
 
-## 其他
+### 连接站内
 
-代码参考了 [pica_crawler](https://github.com/lx1169732264/pica_crawler)，本来是想添加新功能，奈何 Python 早就忘光了，只好重写一个。
+复制 `.env.template` 为 `.env.local`，只在本地填写：
+
+```dotenv
+PICA_ACCOUNT=
+PICA_PASSWORD=
+PICA_PROXY=
+PICA_DL_CONCURRENCY=5
+```
+
+随后可执行：
+
+```bash
+# 同步收藏元数据
+node dist/library-cli.js sync
+
+# 搜索并按爱心排序
+node dist/library-cli.js search "关键词" --tag "标签" --sort likes
+
+# 增量下载指定漫画；再次执行只补缺失内容
+node dist/library-cli.js download <comic-id> --episodes 1,3,5-10
+
+# 查看本地索引和下载进度
+node dist/library-cli.js progress
+
+# 根据已审核作者生成本地视图目录
+node dist/library-cli.js organize
+```
+
+### Lite 到完整版
+
+1. 在 Lite 网页导入收藏 CSV，在浏览器里筛选并审核作者。
+2. 导出 `author-aliases.json` 与 `download-plan.json`。
+3. 在本地执行：
+
+```bash
+node dist/library-cli.js import favorites.csv
+node dist/library-cli.js import-aliases author-aliases.json
+node dist/library-cli.js download-plan download-plan.json
+node dist/library-cli.js organize
+```
+
+也可以在本地完整版网页中直接导入作者字典并点击下载。
+
+## 常用命令
+
+```text
+pica-library import <favorites.csv>
+pica-library export <favorites.csv>
+pica-library status
+pica-library progress [comic-id]
+pica-library list --tag TAG --author NAME --sort recommended
+pica-library authors --pending
+pica-library author merge <target-id> <source-id...> --name NAME
+pica-library sync
+pica-library search [KEYWORD] --tag TAG --category NAME --sort likes
+pica-library download <comic-id...> --episodes all --concurrency 5
+pica-library download-plan <download-plan.json>
+pica-library organize
+pica-library serve
+pica-library doctor
+```
+
+默认数据目录是 `.pica-library`，可用 `--data-dir PATH` 或 `PICA_LIBRARY_HOME` 修改。下载对象位于 `library/objects`，作者和社团视图位于 `library/views`。
+
+## 开发与验证
+
+```bash
+pnpm type:check
+pnpm test
+node --check web/app.js
+pnpm build
+```
+
+架构说明见 [docs/architecture.md](docs/architecture.md)，安全与公开发布边界见 [SECURITY.md](SECURITY.md)。
+
+## 开源与来源
+
+本项目基于 Neo（justorez）的 `pica-cli` 演进，保留原作者署名与 MIT License。改进版同样以 MIT License 发布；许可证只覆盖仓库代码，不授予任何第三方内容的版权或再分发权。

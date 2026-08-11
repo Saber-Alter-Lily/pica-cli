@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios'
 import headers from './data/headers.json'
-import { createHmac } from 'node:crypto'
+import { createHash, createHmac } from 'node:crypto'
 import path from 'node:path'
 import fs from 'node:fs/promises'
 import { normalizeName, debug } from './utils'
@@ -108,7 +108,7 @@ export class Pica {
     }
 
     async login(account: string, password: string) {
-        debug('\n%s %s', account, password)
+        debug('\nlogin requested for configured account')
 
         const res = await this.request<string>('post', 'auth/sign-in', {
             email: account,
@@ -132,6 +132,26 @@ export class Pica {
         if (page > 0) params.set('page', String(page))
         const url = `comics?${params}`
         return this.request('get', url)
+    }
+
+    async comicsPage(
+        block = '',
+        tag = '',
+        order = this.Order.default,
+        page = 1
+    ) {
+        const res = await this.comics(block, tag, order, page)
+        return res.comics as PageSearch
+    }
+
+    async comicsAll(block = '', tag = '', order = this.Order.default) {
+        const first = await this.comicsPage(block, tag, order, 1)
+        const comics = [...first.docs]
+        for (let page = 2; page <= first.pages; page++) {
+            const next = await this.comicsPage(block, tag, order, page)
+            comics.push(...next.docs)
+        }
+        return comics
     }
 
     /**
@@ -256,21 +276,65 @@ export class Pica {
         return fs.writeFile(file, res.data)
     }
 
-    async search(keyword: string, page = 1, sort = this.Order.loved) {
+    async downloadToFile(url: string, file: string) {
+        const request = async (target: string) => {
+            this.retryMap.set(target, this.maxRetry)
+            return this.api.get<Buffer>(target, {
+                responseType: 'arraybuffer',
+                maxRedirects: 5,
+                validateStatus: (status) => status >= 200 && status < 304
+            })
+        }
+        let response
+        try {
+            response = await request(url)
+        } catch (error) {
+            if (
+                process.env.PICA_ALLOW_INSECURE_HTTP === 'true' &&
+                url.startsWith('https://')
+            ) {
+                response = await request(
+                    `http://${url.slice('https://'.length)}`
+                )
+            } else {
+                throw error
+            }
+        }
+        const data = Buffer.from(response.data)
+        await fs.mkdir(path.dirname(file), { recursive: true })
+        const partial = `${file}.part`
+        await fs.writeFile(partial, data)
+        await fs.rename(partial, file)
+        return {
+            bytes: data.byteLength,
+            sha256: createHash('sha256').update(data).digest('hex')
+        }
+    }
+
+    async search(
+        keyword: string,
+        page = 1,
+        sort = this.Order.loved,
+        categories: string[] = []
+    ) {
         const url = `comics/advanced-search?page=${page}`
-        const data = { keyword, sort }
+        const data = { keyword, sort, categories }
         const res = await this.request<PageSearch>('post', url, data)
         return res.comics
     }
 
-    async searchAll(keyword: string) {
+    async searchAll(
+        keyword: string,
+        sort = this.Order.loved,
+        categories: string[] = []
+    ) {
         const comics: Comic[] = []
         if (keyword) {
-            const first = await this.search(keyword)
+            const first = await this.search(keyword, 1, sort, categories)
             const pages = first.pages
             comics.push(...first.docs)
             for (let page = 2; page <= pages; page++) {
-                const res = await this.search(keyword, page)
+                const res = await this.search(keyword, page, sort, categories)
                 comics.push(...res.docs)
             }
         }
@@ -280,6 +344,19 @@ export class Pica {
     categories() {
         const url = 'categories'
         return this.request('get', url)
+    }
+
+    async keywords() {
+        const res = await this.request<string[]>('get', 'keywords')
+        return res.keywords
+    }
+
+    async related(bookId: string) {
+        const res = await this.request<Comic[]>(
+            'get',
+            `comics/${bookId}/recommendation`
+        )
+        return res.comics
     }
 
     /**

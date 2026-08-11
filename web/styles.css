@@ -1,0 +1,245 @@
+:root {
+    font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        sans-serif;
+    color: #17231d;
+    background: #f3f7f4;
+    --green: #14532d;
+    --green-2: #1f7a45;
+    --mint: #dff3e6;
+    --line: #cbd9d0;
+    --paper: #ffffff;
+    --muted: #5f7066;
+}
+
+* {
+    box-sizing: border-box;
+}
+body {
+    margin: 0;
+    min-height: 100vh;
+}
+button,
+input,
+select {
+    font: inherit;
+}
+button {
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 0.62rem 0.9rem;
+    background: var(--paper);
+    cursor: pointer;
+}
+button:hover {
+    border-color: var(--green-2);
+}
+button.primary {
+    color: white;
+    border-color: var(--green);
+    background: var(--green);
+}
+input,
+select {
+    min-height: 42px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 0.55rem 0.7rem;
+    background: var(--paper);
+    color: inherit;
+}
+header {
+    display: flex;
+    justify-content: space-between;
+    gap: 2rem;
+    align-items: center;
+    padding: 2.2rem max(5vw, 1.2rem) 1.5rem;
+    color: white;
+    background: linear-gradient(125deg, #0f3d24, #1f7a45);
+}
+h1 {
+    margin: 0;
+    font-size: clamp(2rem, 5vw, 3.6rem);
+    letter-spacing: -0.04em;
+}
+h2 {
+    margin-top: 0;
+}
+.eyebrow {
+    margin: 0 0 0.5rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    opacity: 0.72;
+}
+.subtitle {
+    margin-bottom: 0;
+    opacity: 0.84;
+}
+.mode {
+    padding: 0.65rem 0.9rem;
+    border: 1px solid #ffffff55;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+nav {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.8rem max(5vw, 1.2rem);
+    background: #e7f0ea;
+    border-bottom: 1px solid var(--line);
+}
+nav button {
+    background: transparent;
+    border-color: transparent;
+}
+nav button.active {
+    color: white;
+    background: var(--green);
+}
+main {
+    width: min(1440px, 92vw);
+    margin: 1.5rem auto 4rem;
+}
+.view {
+    display: none;
+}
+.view.active {
+    display: block;
+}
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+.card,
+.panel,
+.author-card,
+.result-card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 8px 30px #12351f0c;
+}
+.card {
+    padding: 1rem;
+}
+.card strong {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--green);
+    font-size: 1.8rem;
+}
+.panel {
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+}
+.row,
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+}
+.toolbar {
+    margin-bottom: 1rem;
+}
+.toolbar input {
+    flex: 1 1 190px;
+}
+.muted {
+    color: var(--muted);
+}
+.table-wrap {
+    overflow: auto;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+th,
+td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #e4ece7;
+    vertical-align: top;
+}
+th {
+    position: sticky;
+    top: 0;
+    color: white;
+    background: var(--green);
+}
+.author-list {
+    display: grid;
+    gap: 0.8rem;
+}
+.author-card {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem;
+}
+.author-name {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+.author-meta {
+    margin: 0.35rem 0;
+}
+.author-evidence {
+    margin-bottom: 0;
+    font-size: 0.86rem;
+}
+.author-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+}
+.search-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.65rem;
+}
+.result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.8rem;
+}
+.result-card {
+    padding: 1rem;
+}
+.result-card h3 {
+    margin: 0 0 0.45rem;
+}
+.tag {
+    display: inline-block;
+    margin: 0.15rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 999px;
+    background: var(--mint);
+    font-size: 0.74rem;
+}
+@media (max-width: 720px) {
+    header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+    nav {
+        overflow-x: auto;
+    }
+    .author-card {
+        flex-direction: column;
+    }
+}

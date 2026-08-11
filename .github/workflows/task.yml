@@ -81,13 +81,15 @@ jobs:
           pnpm run build
 
       - name: Download
+        if: ${{ !inputs.PICA_PRINT_FAVS }}
         run: pnpm start
 
       - name: Compress
-        if: inputs.OUTPUT_ZIP
+        if: ${{ !inputs.PICA_PRINT_FAVS && inputs.OUTPUT_ZIP }}
         run: pnpm start:zip
 
       - name: Upload to github
+        if: ${{ !inputs.PICA_PRINT_FAVS }}
         uses: actions/upload-artifact@v4
         with:
           name: pica-comics
@@ -95,5 +97,29 @@ jobs:
           retention-days: 7
 
       - name: Upload to file.io
-        if: inputs.UPLOAD_FILEIO
+        if: ${{ !inputs.PICA_PRINT_FAVS && inputs.UPLOAD_FILEIO }}
         run: node scripts/upload.js
+
+      - name: Export favorites without logging titles
+        if: inputs.PICA_PRINT_FAVS
+        env:
+          DEBUG: ''
+        run: pnpm exec tsx scripts/export-favorites.ts
+
+      - name: Encrypt favorites export
+        if: inputs.PICA_PRINT_FAVS
+        run: |
+          openssl rand -hex 32 > export-passphrase.txt
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in favorites.csv -out favorites.csv.enc -pass file:export-passphrase.txt
+          openssl pkeyutl -encrypt -pubin -inkey .github/export-public.pem -in export-passphrase.txt -out export-passphrase.txt.enc -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256
+          rm favorites.csv export-passphrase.txt
+
+      - name: Upload encrypted favorites
+        if: inputs.PICA_PRINT_FAVS
+        uses: actions/upload-artifact@v4
+        with:
+          name: encrypted-favorites
+          path: |
+            favorites.csv.enc
+            export-passphrase.txt.enc
+          retention-days: 1

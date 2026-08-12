@@ -110,6 +110,26 @@ export class LibraryService {
         )
     }
 
+    async favoritesPage(page: number) {
+        if (!Number.isInteger(page) || page < 1)
+            throw new Error('Favorite page must be a positive integer')
+        const pica = await this.connect()
+        const result = await pica.favorites(page)
+        const records = result.docs.map(comicToRecord)
+        this.database.importFavorites(
+            records,
+            `pica:favorites:page:${page}`,
+            false,
+            true
+        )
+        return {
+            page: result.page,
+            pages: result.pages,
+            total: result.total,
+            comics: records
+        }
+    }
+
     async discover(query: DiscoverQuery) {
         const pica = await this.connect()
         const order = sortCode(pica, query.sort)

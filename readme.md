@@ -21,7 +21,9 @@ Lite 模式只在浏览器本地处理文件，不需要账号，也不会下载
 
 如果不想安装 Node.js，可以使用仓库的 `limited-download` Actions。第一次使用时，在仓库的 **Settings → Secrets and variables → Actions** 添加 `PICA_ACCOUNT` 和 `PICA_PASSWORD`，之后打开 [Actions 工作流](https://github.com/Saber-Alter-Lily/pica-cli/actions/workflows/download.yml)，点击 **Run workflow**，填写漫画 ID 和章节范围。
 
-这个入口是有意受限的：只允许手动触发，单次最多 3 本，下载并发固定为 3，任务最长 30 分钟，Artifact 只保留 1 天，并且不再使用第三方临时文件上传服务。它只适合个人临时下载；请仅下载你有权访问和保存的内容，不要将 Artifact 用于公开再分发。GitHub 的公开仓库 Actions 资源仍受 GitHub 计划配额和[可接受使用政策](https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies?apiVersion=2022-11-28)约束。
+工作流保留了原项目的收藏夹分页体验：可以一次下载指定的一页收藏（站点通常每页约 20 本），也可以输入最多 20 个漫画 ID。图片并发为 5，不设置额外任务超时，多个手动任务可并行运行。Artifact 只保留 1 天，并且不再使用第三方临时文件上传服务；图片已经压缩过，上传时关闭二次压缩以缩短等待时间。
+
+请仅下载你有权访问和保存的内容，不要将 Artifact 用于公开再分发。GitHub Free 当前包含 500 MB Artifact 存储，500–1000 MB 的单个任务可能快速占用或超过免费额度；实际可用量还受账号计划、同时保留的 Artifact 和 GitHub 政策影响。GitHub 的公开仓库标准 runner 免费，但仍受 GitHub 的[Actions 计费与用量规则](https://docs.github.com/en/billing/concepts/product-billing/github-actions)和[可接受使用政策](https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies?apiVersion=2022-11-28)约束。
 
 ## 需要同步和下载时
 

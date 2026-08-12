@@ -27,7 +27,8 @@ const flagsWithValues = new Set([
     'episodes',
     'concurrency',
     'host',
-    'port'
+    'port',
+    'page'
 ])
 
 function flag(name: string, fallback?: string) {
@@ -69,6 +70,7 @@ Usage:
   pica-library sync
   pica-library search [KEYWORD] [--tag TAG] [--category NAME] [--sort likes]
   pica-library download <comic-id...> [--episodes 1,3,5-10] [--concurrency 5]
+  pica-library download-favorites --page 1 [--episodes all] [--concurrency 5]
   pica-library download-plan <download-plan.json> [--concurrency 5]
   pica-library organize
   pica-library serve [--host 127.0.0.1] [--port 4789]
@@ -330,6 +332,40 @@ async function main() {
                 )
             }
             print(results)
+            return
+        }
+        if (command === 'download-favorites') {
+            const page = Number(flag('page', '1'))
+            const favoritePage = await service.favoritesPage(page)
+            if (!hasFlag('json')) {
+                console.log(
+                    `Favorite page ${favoritePage.page}/${favoritePage.pages}: ${favoritePage.comics.length} comics`
+                )
+            }
+            const results = []
+            for (const comic of favoritePage.comics) {
+                results.push(
+                    await service.downloadComic(comic.comicId, {
+                        episodeOrders: parseEpisodeSelection(flag('episodes')),
+                        concurrency: Number(flag('concurrency', '5')),
+                        onProgress: (progress) => {
+                            if (!hasFlag('json')) {
+                                process.stdout.write(
+                                    `\r${progress.comicTitle} / ${progress.episodeTitle}: ${progress.completed}/${progress.total}`
+                                )
+                                if (progress.completed === progress.total)
+                                    process.stdout.write('\n')
+                            }
+                        }
+                    })
+                )
+            }
+            print({
+                page: favoritePage.page,
+                pages: favoritePage.pages,
+                totalFavorites: favoritePage.total,
+                results
+            })
             return
         }
         if (command === 'download-plan') {

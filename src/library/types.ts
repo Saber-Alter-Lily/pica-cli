@@ -90,3 +90,24 @@ export interface AuthorGroup {
     evidence: string
     reviewStatus: string
 }
+
+export interface PreferenceItem {
+    value: string
+    count: number
+    weight: number
+}
+
+export interface RecommendationProfile {
+    favoriteCount: number
+    finishedRatio: number
+    tags: PreferenceItem[]
+    categories: PreferenceItem[]
+    authors: PreferenceItem[]
+    circles: PreferenceItem[]
+}
+
+export interface RecommendationResult {
+    comic: StoredComic
+    score: number
+    reasons: string[]
+}

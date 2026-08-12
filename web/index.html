@@ -9,10 +9,9 @@
     </head>
     <body>
         <header>
-            <div>
-                <p class="eyebrow">LOCAL-FIRST COMIC LIBRARY</p>
+            <div class="brand">
                 <h1>Pica Library</h1>
-                <p class="subtitle">收藏同步、作者归一、搜索推荐与增量下载</p>
+                <p class="subtitle">整理、发现、继续下载你的漫画收藏</p>
             </div>
             <div id="mode" class="mode">正在检测运行模式…</div>
         </header>
@@ -21,18 +20,46 @@
             <button data-view="dashboard" class="active">概览</button>
             <button data-view="library">收藏库</button>
             <button data-view="authors">作者归一</button>
+            <button data-view="recommendations">专属推荐</button>
             <button data-view="discover">站内搜索</button>
         </nav>
 
         <main>
             <section id="dashboard" class="view active">
+                <div class="start-grid">
+                    <button class="start-action primary-action" id="first-use">
+                        <span class="step">01</span>
+                        <strong>第一次使用</strong>
+                        <small>准备收藏数据与专属推荐</small>
+                    </button>
+                    <button class="start-action" data-go="recommendations">
+                        <span class="step">02</span>
+                        <strong>生成专属推荐</strong>
+                        <small>从收藏偏好发现关联作品</small>
+                    </button>
+                    <a
+                        class="start-action"
+                        id="actions-download"
+                        href="https://github.com/Saber-Alter-Lily/pica-cli/actions/workflows/download.yml"
+                    >
+                        <span class="step">03</span>
+                        <strong>在 GitHub 下载</strong>
+                        <small>无需安装，一次下载一页收藏</small>
+                    </a>
+                    <button class="start-action" id="show-setup">
+                        <span class="step">04</span>
+                        <strong>安装本地完整版</strong>
+                        <small>同步、批量增量下载和本地归档</small>
+                    </button>
+                </div>
                 <div id="summary" class="cards"></div>
-                <article class="panel">
-                    <h2>导入收藏数据</h2>
-                    <p>
-                        Lite 模式只在浏览器本地处理 CSV；连接本地引擎后可写入
-                        SQLite。
-                    </p>
+                <article class="panel compact-panel">
+                    <div>
+                        <h2>导入收藏库数据</h2>
+                        <p class="muted">
+                            文件只在当前浏览器中处理，不会上传。
+                        </p>
+                    </div>
                     <div class="row">
                         <input
                             id="import-file"
@@ -44,15 +71,82 @@
                     </div>
                     <p id="import-result" class="muted"></p>
                 </article>
-                <article class="panel">
-                    <h2>工作方式</h2>
-                    <ol>
-                        <li>同步或导入收藏元数据。</li>
-                        <li>审核作者与社团候选关系。</li>
-                        <li>使用 Tag、作者和热度生成下载计划。</li>
-                        <li>完整版只下载缺失章节与图片。</li>
+                <dialog id="first-use-dialog">
+                    <button
+                        class="first-use-close dialog-close"
+                        aria-label="关闭"
+                    >
+                        ×
+                    </button>
+                    <h2>第一次使用</h2>
+                    <ol class="setup-steps">
+                        <li>Fork 项目到自己的 GitHub 账号。</li>
+                        <li>
+                            在 Fork 的 Actions Secrets 设置
+                            <code>PICA_ACCOUNT</code> 和
+                            <code>PICA_PASSWORD</code>。
+                        </li>
+                        <li>
+                            运行
+                            <code>prepare-library</code>，下载生成的数据包。
+                        </li>
+                        <li>
+                            回到这里导入 <code>pica-library-bundle.json</code>。
+                        </li>
                     </ol>
-                </article>
+                    <a
+                        class="button-link primary"
+                        href="https://github.com/Saber-Alter-Lily/pica-cli/fork"
+                        >Fork 项目</a
+                    >
+                    <a
+                        class="button-link"
+                        href="https://github.com/Saber-Alter-Lily/pica-cli/actions/workflows/prepare-library.yml"
+                        >打开准备工作流</a
+                    >
+                </dialog>
+                <dialog id="setup-dialog">
+                    <button class="setup-close dialog-close" aria-label="关闭">
+                        ×
+                    </button>
+                    <h2>本地完整版</h2>
+                    <ol class="setup-steps">
+                        <li>下载或克隆项目。</li>
+                        <li>
+                            运行
+                            <code
+                                >powershell -ExecutionPolicy Bypass -File
+                                scripts/setup-windows.ps1</code
+                            >
+                        </li>
+                        <li>
+                            在 <code>.env.local</code> 填写账号，再运行
+                            <code>node dist/library-cli.js serve</code>
+                        </li>
+                    </ol>
+                    <a
+                        class="button-link primary"
+                        href="https://github.com/Saber-Alter-Lily/pica-cli/archive/refs/heads/main.zip"
+                        >下载项目 ZIP</a
+                    >
+                </dialog>
+            </section>
+
+            <section id="recommendations" class="view">
+                <div class="section-heading">
+                    <div>
+                        <h2>专属推荐</h2>
+                        <p class="muted">
+                            综合作者、社团、Tag、分类、完结偏好和站内热度，每条结果都会说明理由。
+                        </p>
+                    </div>
+                    <button id="recommend-button" class="primary">
+                        生成推荐
+                    </button>
+                </div>
+                <div id="profile" class="profile-strip"></div>
+                <p id="recommend-message" class="muted"></p>
+                <div id="recommend-results" class="result-grid"></div>
             </section>
 
             <section id="library" class="view">

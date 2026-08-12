@@ -7,6 +7,7 @@ import type { Comic, Picture } from '../types'
 import { LibraryDatabase } from './database'
 import { normalizeAuthorKey } from './author'
 import type { FavoriteRecord, SortMode } from './types'
+import { recommendComics } from './recommendation'
 
 export interface DiscoverQuery {
     keyword?: string
@@ -109,6 +110,26 @@ export class LibraryService {
         )
     }
 
+    async favoritesPage(page: number) {
+        if (!Number.isInteger(page) || page < 1)
+            throw new Error('Favorite page must be a positive integer')
+        const pica = await this.connect()
+        const result = await pica.favorites(page)
+        const records = result.docs.map(comicToRecord)
+        this.database.importFavorites(
+            records,
+            `pica:favorites:page:${page}`,
+            false,
+            true
+        )
+        return {
+            page: result.page,
+            pages: result.pages,
+            total: result.total,
+            comics: records
+        }
+    }
+
     async discover(query: DiscoverQuery) {
         const pica = await this.connect()
         const order = sortCode(pica, query.sort)
@@ -157,6 +178,42 @@ export class LibraryService {
         records = records.slice(0, Math.min(query.limit ?? 100, 1000))
         this.database.importCatalog(records, 'pica:discover')
         return records
+    }
+
+    async recommendations(
+        options: { limit?: number; seedCount?: number } = {}
+    ) {
+        const limit = Math.max(1, Math.min(options.limit ?? 30, 100))
+        const favorites = this.database
+            .listComics({ limit: 5000 })
+            .filter((comic) => comic.isFavorite)
+        if (favorites.length === 0) return recommendComics([], limit)
+
+        const pica = await this.connect()
+        const seeds = [...favorites]
+            .sort(
+                (a, b) =>
+                    (b.totalLikes ?? 0) - (a.totalLikes ?? 0) ||
+                    String(b.updatedAt ?? '').localeCompare(a.updatedAt ?? '')
+            )
+            .slice(0, Math.max(1, Math.min(options.seedCount ?? 8, 12)))
+        const related = await Promise.all(
+            seeds.map(async (seed) => {
+                try {
+                    return await pica.related(seed.comicId)
+                } catch {
+                    return []
+                }
+            })
+        )
+        const candidateMap = new Map<string, FavoriteRecord>()
+        for (const comic of related.flat())
+            candidateMap.set(comic._id, comicToRecord(comic))
+        this.database.importCatalog(
+            [...candidateMap.values()],
+            'pica:recommendations'
+        )
+        return recommendComics(this.database.listComics({ limit: 5000 }), limit)
     }
 
     async downloadComic(

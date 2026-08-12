@@ -7,7 +7,10 @@ import { LibraryDatabase } from './library/database'
 import { favoritesFromCsv, favoritesToCsv } from './library/csv'
 import { LibraryService, parseEpisodeSelection } from './library/service'
 import { startLibraryServer } from './library/server'
-import { organizeLibraryViews } from './library/organizer'
+import {
+    materializePortableLibrary,
+    organizeLibraryViews
+} from './library/organizer'
 import type { SortMode } from './library/types'
 import { parsePositionals } from './library/arguments'
 
@@ -27,7 +30,9 @@ const flagsWithValues = new Set([
     'episodes',
     'concurrency',
     'host',
-    'port'
+    'port',
+    'page',
+    'output'
 ])
 
 function flag(name: string, fallback?: string) {
@@ -67,10 +72,13 @@ Usage:
   pica-library author <approve|keep|research> <author-id> [--name NAME]
   pica-library author merge <target-id> <source-id...> [--name NAME]
   pica-library sync
+  pica-library prepare-library --output pica-library-export
   pica-library search [KEYWORD] [--tag TAG] [--category NAME] [--sort likes]
   pica-library download <comic-id...> [--episodes 1,3,5-10] [--concurrency 5]
+  pica-library download-favorites --page 1 [--episodes all] [--concurrency 5]
   pica-library download-plan <download-plan.json> [--concurrency 5]
   pica-library organize
+  pica-library portable --output pica-download
   pica-library serve [--host 127.0.0.1] [--port 4789]
   pica-library doctor
 
@@ -281,6 +289,47 @@ async function main() {
             print(await service.syncFavorites())
             return
         }
+        if (command === 'prepare-library') {
+            const outputDir = path.resolve(
+                flag('output', 'pica-library-export')!
+            )
+            await service.syncFavorites()
+            const result = await service.recommendations({
+                limit: Number(flag('limit', '100')),
+                seedCount: 12
+            })
+            const favorites = database
+                .listComics({ limit: 5000 })
+                .filter((comic) => comic.isFavorite)
+            fs.mkdirSync(outputDir, { recursive: true })
+            fs.writeFileSync(
+                path.join(outputDir, 'favorites.csv'),
+                favoritesToCsv(favorites),
+                'utf8'
+            )
+            fs.writeFileSync(
+                path.join(outputDir, 'pica-library-bundle.json'),
+                JSON.stringify(
+                    {
+                        schemaVersion: 2,
+                        kind: 'pica-library-bundle',
+                        generatedAt: new Date().toISOString(),
+                        favorites,
+                        profile: result.profile,
+                        recommendations: result.recommendations
+                    },
+                    null,
+                    2
+                ),
+                'utf8'
+            )
+            print({
+                outputDir,
+                favorites: favorites.length,
+                recommendations: result.recommendations.length
+            })
+            return
+        }
         if (command === 'search') {
             const keyword = positionalsAfter('search')[0]
             const records = await service.discover({
@@ -332,6 +381,40 @@ async function main() {
             print(results)
             return
         }
+        if (command === 'download-favorites') {
+            const page = Number(flag('page', '1'))
+            const favoritePage = await service.favoritesPage(page)
+            if (!hasFlag('json')) {
+                console.log(
+                    `Favorite page ${favoritePage.page}/${favoritePage.pages}: ${favoritePage.comics.length} comics`
+                )
+            }
+            const results = []
+            for (const comic of favoritePage.comics) {
+                results.push(
+                    await service.downloadComic(comic.comicId, {
+                        episodeOrders: parseEpisodeSelection(flag('episodes')),
+                        concurrency: Number(flag('concurrency', '5')),
+                        onProgress: (progress) => {
+                            if (!hasFlag('json')) {
+                                process.stdout.write(
+                                    `\r${progress.comicTitle} / ${progress.episodeTitle}: ${progress.completed}/${progress.total}`
+                                )
+                                if (progress.completed === progress.total)
+                                    process.stdout.write('\n')
+                            }
+                        }
+                    })
+                )
+            }
+            print({
+                page: favoritePage.page,
+                pages: favoritePage.pages,
+                totalFavorites: favoritePage.total,
+                results
+            })
+            return
+        }
         if (command === 'download-plan') {
             const file = positionalsAfter('download-plan')[0]
             if (!file) throw new Error('A download plan JSON file is required')
@@ -366,6 +449,17 @@ async function main() {
                 organizeLibraryViews(
                     dataDir,
                     database.listComics({ limit: 5000 })
+                )
+            )
+            return
+        }
+        if (command === 'portable') {
+            const outputDir = path.resolve(flag('output', 'pica-download')!)
+            print(
+                materializePortableLibrary(
+                    dataDir,
+                    database.listComics({ limit: 5000 }),
+                    outputDir
                 )
             )
             return

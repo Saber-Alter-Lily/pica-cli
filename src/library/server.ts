@@ -252,6 +252,20 @@ export async function startLibraryServer(options: {
                 )
             }
             if (
+                url.pathname === '/api/v1/recommendations' &&
+                request.method === 'POST'
+            ) {
+                const input = await body(request)
+                return json(
+                    response,
+                    200,
+                    await options.service.recommendations({
+                        limit: Number(input.limit ?? 30),
+                        seedCount: Number(input.seedCount ?? 8)
+                    })
+                )
+            }
+            if (
                 url.pathname === '/api/v1/download' &&
                 request.method === 'POST'
             ) {

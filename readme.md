@@ -1,85 +1,70 @@
 # Pica Library
 
-一个本地优先的漫画收藏管理与增量下载工具。它保留原 `pica-cli` 的站内检索和下载能力，同时增加作者归一、Tag 筛选、热度排序、下载进度与可迁移的 Lite 网页。
+一个把 Pica 收藏夹整理成「可搜索、可按作者归档、可增量下载」的工具。
 
-> 当前版本：`2.0.0-alpha.1`。请只下载你有权访问和保存的内容，遵守服务条款、当地法律以及创作者的权利。
+它有两种用法：打开网页即可整理收藏；运行本地引擎后，可以同步收藏、搜索站内内容和下载漫画。
 
-## 三种使用层次
+## 先试试网页
 
-| 层次 | 适合场景 | 数据位置 | 站内连接与下载 |
-| --- | --- | --- | --- |
-| GitHub Pages Lite | 临时整理、筛选、作者审核、生成计划 | 浏览器 IndexedDB | 不支持 |
-| 本地网页完整版 | 日常管理、同步、搜索、下载 | 本地 SQLite 与文件系统 | 支持 |
-| CLI | 批处理、NAS、脚本和自动化 | 本地 SQLite 与文件系统 | 支持 |
+打开 **[Pica Library Lite](https://saber-alter-lily.github.io/pica-cli/)**：
 
-Lite 与完整版使用同一套网页。页面能访问本地 API 时自动进入完整版，否则进入 Lite 模式。Lite 可导出作者字典和下载计划，随后交给本地完整版执行。
+1. 选择你的收藏夹 CSV 文件并导入。
+2. 在“收藏库”里按标题、作者、Tag 筛选，按爱心数或浏览量排序。
+3. 在“作者归一”里审核或合并同一作者的不同写法。
+4. 导出作者字典或下载计划。
 
-## 第一版能力
+Lite 模式只在浏览器本地处理文件，不需要账号，也不会下载漫画。你的 CSV 不会上传到 GitHub。
 
-- 导入收藏夹 CSV，或通过账号从站内同步收藏元数据。
-- 将 `社团（作者）`、全半角和空白差异归一成作者候选；低置信度结果进入人工审核。
-- 手动合并作者别名，并导入/导出可迁移的作者字典。
-- 按作者、Tag、分类、完成状态筛选，按更新时间、爱心、浏览量或综合分排序。
-- 站内关键词、Tag、分类搜索；搜索结果可直接交给下载器。
-- 按漫画、章节和图片稳定 ID 记录进度；重复执行只补缺失图片。
-- 对已有下载按规范作者和社团生成视图目录，不复制漫画文件。
-- 保留原有 `pica-cli`、`pica-zip` 命令以兼容旧用法。
+## 需要同步和下载时
 
-## 快速开始
-
-需要 Node.js 22.5 或更高版本，推荐 Node.js 24。
+本地完整版使用原项目的站内接口和下载能力。需要 Node.js 22.5+，推荐 Node.js 24。
 
 ```bash
 git clone https://github.com/Saber-Alter-Lily/pica-cli.git
 cd pica-cli
 pnpm install
 pnpm build
-```
-
-初始化并打开本地网页：
-
-```bash
-node dist/library-cli.js init
 node dist/library-cli.js serve
 ```
 
-浏览器打开 `http://127.0.0.1:4789`。服务默认只监听本机，不会把账号、数据库或漫画暴露到公网。
+然后打开 <http://127.0.0.1:4789>。
 
-### 连接站内
+### 配置账号
 
-复制 `.env.template` 为 `.env.local`，只在本地填写：
+复制 `.env.template` 为 `.env.local`，填写：
 
 ```dotenv
-PICA_ACCOUNT=
-PICA_PASSWORD=
+PICA_ACCOUNT=你的账号
+PICA_PASSWORD=你的密码
+# 有需要时填写代理，例如 http://127.0.0.1:7890
 PICA_PROXY=
 PICA_DL_CONCURRENCY=5
 ```
 
-随后可执行：
+账号只在本机使用，不会写入数据库或日志。不要把 `.env.local` 提交到 Git。
+
+### 常用操作
 
 ```bash
-# 同步收藏元数据
+# 同步收藏夹元数据
 node dist/library-cli.js sync
 
-# 搜索并按爱心排序
+# 按关键词、Tag 搜索并按爱心排序
 node dist/library-cli.js search "关键词" --tag "标签" --sort likes
 
-# 增量下载指定漫画；再次执行只补缺失内容
-node dist/library-cli.js download <comic-id> --episodes 1,3,5-10
+# 下载一部漫画的指定章节；再次运行只补缺失图片
+node dist/library-cli.js download 漫画ID --episodes 1,3,5-10
 
-# 查看本地索引和下载进度
+# 查看章节和图片进度
 node dist/library-cli.js progress
 
-# 根据已审核作者生成本地视图目录
+# 按归一后的作者和社团生成本地浏览目录
 node dist/library-cli.js organize
 ```
 
-### Lite 到完整版
+## 从 Lite 继续下载
 
-1. 在 Lite 网页导入收藏 CSV，在浏览器里筛选并审核作者。
-2. 导出 `author-aliases.json` 与 `download-plan.json`。
-3. 在本地执行：
+Lite 导出的文件可以交给本地 CLI：
 
 ```bash
 node dist/library-cli.js import favorites.csv
@@ -88,30 +73,50 @@ node dist/library-cli.js download-plan download-plan.json
 node dist/library-cli.js organize
 ```
 
-也可以在本地完整版网页中直接导入作者字典并点击下载。
+也可以直接在本地网页中导入作者字典并操作。
 
-## 常用命令
+## 原来的命令还能用吗？
 
-```text
-pica-library import <favorites.csv>
-pica-library export <favorites.csv>
-pica-library status
-pica-library progress [comic-id]
-pica-library list --tag TAG --author NAME --sort recommended
-pica-library authors --pending
-pica-library author merge <target-id> <source-id...> --name NAME
-pica-library sync
-pica-library search [KEYWORD] --tag TAG --category NAME --sort likes
-pica-library download <comic-id...> --episodes all --concurrency 5
-pica-library download-plan <download-plan.json>
-pica-library organize
-pica-library serve
-pica-library doctor
+可以。原有命令仍然保留：
+
+```bash
+pica-cli
+pica-zip
 ```
 
-默认数据目录是 `.pica-library`，可用 `--data-dir PATH` 或 `PICA_LIBRARY_HOME` 修改。下载对象位于 `library/objects`，作者和社团视图位于 `library/views`。
+新功能使用 `pica-library`：
 
-## 开发与验证
+```text
+pica-library init                         初始化数据库
+pica-library import <favorites.csv>       导入收藏夹
+pica-library status                       查看统计
+pica-library list --tag TAG                筛选本地收藏
+pica-library authors --pending             查看待审核作者
+pica-library sync                         同步站内收藏
+pica-library search [KEYWORD]             站内搜索
+pica-library download <comic-id>          增量下载
+pica-library serve                        启动本地网页
+```
+
+## 常见问题
+
+**网页能直接下载漫画吗？**
+
+在线 Lite 网页不能。它用于整理元数据和生成计划；下载需要在自己的电脑上运行本地完整版，这样账号和文件都留在本机。
+
+**每次同步会不会重新下载？**
+
+不会。程序按漫画、章节和图片的稳定 ID 记录状态，只下载缺失内容。
+
+**作者归一会不会误合并？**
+
+系统只生成候选，不会把相似名字自动当成同一人。低置信度关系会进入审核；确认后才用于作者目录。
+
+**GitHub 会保存我的漫画吗？**
+
+不会。GitHub 只保存代码、文档和构建流程；账号、收藏数据和下载文件均保存在你的本地环境。
+
+## 开发
 
 ```bash
 pnpm type:check
@@ -120,8 +125,12 @@ node --check web/app.js
 pnpm build
 ```
 
-架构说明见 [docs/architecture.md](docs/architecture.md)，安全与公开发布边界见 [SECURITY.md](SECURITY.md)。
+更详细的内容：
 
-## 开源与来源
+- [架构说明](docs/architecture.md)
+- [安全说明](SECURITY.md)
+- [在线 Lite 页面](https://saber-alter-lily.github.io/pica-cli/)
 
-本项目基于 Neo（justorez）的 `pica-cli` 演进，保留原作者署名与 MIT License。改进版同样以 MIT License 发布；许可证只覆盖仓库代码，不授予任何第三方内容的版权或再分发权。
+## 来源与许可证
+
+本项目基于 Neo（justorez）的 `pica-cli` 演进，保留原作者署名和 MIT License。请只下载你有权访问和保存的内容，并遵守站点规则及适用法律。

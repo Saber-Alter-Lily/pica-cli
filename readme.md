@@ -15,6 +15,14 @@
 
 Lite 模式只在浏览器本地处理文件，不需要账号，也不会下载漫画。你的 CSV 不会上传到 GitHub。
 
+首页只需要选一个动作：导入收藏、生成推荐、打开 GitHub 下载，或安装本地完整版。
+
+## GitHub 下载
+
+如果不想安装 Node.js，可以使用仓库的 `limited-download` Actions。第一次使用时，在仓库的 **Settings → Secrets and variables → Actions** 添加 `PICA_ACCOUNT` 和 `PICA_PASSWORD`，之后打开 [Actions 工作流](https://github.com/Saber-Alter-Lily/pica-cli/actions/workflows/download.yml)，点击 **Run workflow**，填写漫画 ID 和章节范围。
+
+这个入口是有意受限的：只允许手动触发，单次最多 3 本，下载并发固定为 3，任务最长 30 分钟，Artifact 只保留 1 天，并且不再使用第三方临时文件上传服务。它只适合个人临时下载；请仅下载你有权访问和保存的内容，不要将 Artifact 用于公开再分发。GitHub 的公开仓库 Actions 资源仍受 GitHub 计划配额和[可接受使用政策](https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies?apiVersion=2022-11-28)约束。
+
 ## 需要同步和下载时
 
 本地完整版使用原项目的站内接口和下载能力。需要 Node.js 22.5+，推荐 Node.js 24。
@@ -42,6 +50,8 @@ PICA_DL_CONCURRENCY=5
 ```
 
 账号只在本机使用，不会写入数据库或日志。不要把 `.env.local` 提交到 Git。
+
+Windows 用户可以在项目根目录运行 `powershell -ExecutionPolicy Bypass -File scripts/setup-windows.ps1`，脚本会检查 Node/pnpm、创建 `.env.local` 并完成构建；它不会替你读取或上传账号。
 
 ### 常用操作
 
@@ -102,7 +112,11 @@ pica-library serve                        启动本地网页
 
 **网页能直接下载漫画吗？**
 
-在线 Lite 网页不能。它用于整理元数据和生成计划；下载需要在自己的电脑上运行本地完整版，这样账号和文件都留在本机。
+Lite 网页本身不能直接使用你的账号。你可以选择本地完整版，或通过 GitHub Actions 的受限工作流下载临时 Artifact；本地完整版更适合长期库和增量更新。
+
+**推荐是怎么来的？**
+
+系统从收藏夹统计作者、社团、Tag、分类、完结比例和爱心/浏览量。连接本地引擎后，它还会读取收藏作品的站内关联推荐，排除已收藏内容、限制同一作者占比，并在每张卡片显示匹配理由。Lite 模式可以先展示收藏画像，不能凭空获得站内候选。
 
 **每次同步会不会重新下载？**
 

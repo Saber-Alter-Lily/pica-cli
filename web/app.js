@@ -252,6 +252,48 @@ function escapeHtml(value) {
     return div.innerHTML
 }
 
+function showView(viewId) {
+    $$('nav button').forEach((item) =>
+        item.classList.toggle('active', item.dataset.view === viewId)
+    )
+    $$('.view').forEach((view) =>
+        view.classList.toggle('active', view.id === viewId)
+    )
+}
+
+function renderProfile(profile) {
+    const items = [
+        ...(profile.authors || [])
+            .slice(0, 3)
+            .map((item) => `作者 · ${item.value}`),
+        ...(profile.tags || [])
+            .slice(0, 5)
+            .map((item) => `Tag · ${item.value}`),
+        ...(profile.categories || [])
+            .slice(0, 3)
+            .map((item) => `分类 · ${item.value}`)
+    ]
+    $('#profile').innerHTML = items
+        .map((item) => `<span class="preference">${escapeHtml(item)}</span>`)
+        .join('')
+}
+
+function renderRecommendations(result) {
+    renderProfile(result.profile)
+    $('#recommend-results').innerHTML = result.recommendations
+        .map(
+            ({ comic, score, reasons }) => `
+        <article class="result-card">
+            <h3>${escapeHtml(comic.title)}</h3>
+            <p>${escapeHtml(comic.canonicalAuthor || comic.author)}</p>
+            <ul class="reason-list">${reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join('')}</ul>
+            <p class="muted">匹配分 ${score} · 爱心 ${Number(comic.totalLikes || 0).toLocaleString()}</p>
+            <button data-result-download="${comic.comicId}">下载</button>
+        </article>`
+        )
+        .join('')
+}
+
 function downloadJson(name, value) {
     const url = URL.createObjectURL(
         new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' })
@@ -292,15 +334,14 @@ async function detectMode() {
 }
 
 $$('nav button').forEach((button) =>
-    button.addEventListener('click', () => {
-        $$('nav button').forEach((item) =>
-            item.classList.toggle('active', item === button)
-        )
-        $$('.view').forEach((view) =>
-            view.classList.toggle('active', view.id === button.dataset.view)
-        )
-    })
+    button.addEventListener('click', () => showView(button.dataset.view))
 )
+
+$$('[data-go]').forEach((button) =>
+    button.addEventListener('click', () => showView(button.dataset.go))
+)
+$('#show-setup').addEventListener('click', () => $('#setup-dialog').showModal())
+$('.dialog-close').addEventListener('click', () => $('#setup-dialog').close())
 
 $('#import-button').addEventListener('click', async () => {
     const file = $('#import-file').files[0]
@@ -560,6 +601,72 @@ $('#search-results').addEventListener('click', async (event) => {
         event.target.disabled = false
         event.target.textContent = error.message
     }
+})
+
+$('#recommend-button').addEventListener('click', async () => {
+    if (state.mode !== 'connected') {
+        $('#recommend-message').textContent =
+            state.records.length === 0
+                ? '先在概览导入收藏夹，再连接本地完整版获取站内候选。'
+                : '收藏画像已就绪。连接本地完整版后可从站内关联作品生成推荐。'
+        const favorites = state.records.map((comic) => ({
+            ...comic,
+            isFavorite: true
+        }))
+        const counts = (values) =>
+            [
+                ...values.reduce(
+                    (map, value) => map.set(value, (map.get(value) || 0) + 1),
+                    new Map()
+                )
+            ]
+                .sort((a, b) => b[1] - a[1])
+                .map(([value, count]) => ({ value, count }))
+        renderProfile({
+            authors: counts(
+                favorites.map((comic) => comic.canonicalAuthor || comic.author)
+            ),
+            tags: counts(favorites.flatMap((comic) => comic.tags || [])),
+            categories: counts(
+                favorites.flatMap((comic) => comic.categories || [])
+            )
+        })
+        return
+    }
+    $('#recommend-button').disabled = true
+    $('#recommend-message').textContent = '正在读取收藏偏好和关联作品…'
+    try {
+        const result = await api('/api/v1/recommendations', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ limit: 30, seedCount: 8 })
+        })
+        renderRecommendations(result)
+        $('#recommend-message').textContent = result.recommendations.length
+            ? `已生成 ${result.recommendations.length} 条结果。`
+            : '暂无候选。先同步收藏夹，或在站内搜索中加入更多候选。'
+    } catch (error) {
+        $('#recommend-message').textContent = error.message
+    } finally {
+        $('#recommend-button').disabled = false
+    }
+})
+
+$('#recommend-results').addEventListener('click', (event) => {
+    const comicId = event.target.dataset.resultDownload
+    if (!comicId) return
+    event.target.disabled = true
+    event.target.textContent = '下载中…'
+    api('/api/v1/download', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ comicIds: [comicId] })
+    })
+        .then(() => (event.target.textContent = '完成'))
+        .catch((error) => {
+            event.target.disabled = false
+            event.target.textContent = error.message
+        })
 })
 
 detectMode()

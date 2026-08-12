@@ -107,11 +107,18 @@ jobs:
               --data-dir .pica-library-action
           fi
 
+      - name: Build readable folders
+        run: >-
+          node dist/library-cli.js portable
+          --output pica-download
+          --data-dir .pica-library-action
+
       - name: Upload temporary download
+        id: artifact
         uses: actions/upload-artifact@v4
         with:
           name: pica-download-${{ github.run_id }}
-          path: .pica-library-action/library/objects
+          path: pica-download
           if-no-files-found: error
           retention-days: 1
           compression-level: 0
@@ -119,11 +126,14 @@ jobs:
       - name: Write summary
         if: always()
         shell: bash
+        env:
+          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
         run: |
           {
             echo '## 下载任务'
             echo ''
             echo '支持一页收藏夹（通常约 20 本）或最多 20 个漫画 ID；图片并发 5。'
             echo '多个手动任务可以并行运行；成功产物保留 1 天。'
+            echo "[下载本次漫画]($ARTIFACT_URL)"
             echo '请仅下载你有权访问和保存的内容，不要将产物用于公开再分发。'
           } >> "$GITHUB_STEP_SUMMARY"

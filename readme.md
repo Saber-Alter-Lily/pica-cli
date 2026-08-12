@@ -8,12 +8,13 @@
 
 打开 **[Pica Library Lite](https://saber-alter-lily.github.io/pica-cli/)**：
 
-1. 选择你的收藏夹 CSV 文件并导入。
-2. 在“收藏库”里按标题、作者、Tag 筛选，按爱心数或浏览量排序。
-3. 在“作者归一”里审核或合并同一作者的不同写法。
-4. 导出作者字典或下载计划。
+1. 首次使用先 Fork 项目，在自己的 Fork 中设置账号 Secrets。
+2. 运行 `prepare-library` Action，下载 `pica-library-bundle.json`。
+3. 将数据包导入 Lite 页面。
+4. 在“收藏库”按标题、作者、Tag 筛选，在“专属推荐”查看真实关联作品。
+5. 在“作者归一”审核别名，最后导出作者字典或下载计划。
 
-Lite 模式只在浏览器本地处理文件，不需要账号，也不会下载漫画。你的 CSV 不会上传到 GitHub。
+Lite 模式只在浏览器本地处理文件，不需要在网页填写账号，也不会下载漫画。数据包不会上传到 GitHub；其中包含你的收藏元数据，请自行保管。
 
 首页只需要选一个动作：导入收藏、生成推荐、打开 GitHub 下载，或安装本地完整版。
 
@@ -21,7 +22,11 @@ Lite 模式只在浏览器本地处理文件，不需要账号，也不会下载
 
 如果不想安装 Node.js，可以使用仓库的 `limited-download` Actions。第一次使用时，在仓库的 **Settings → Secrets and variables → Actions** 添加 `PICA_ACCOUNT` 和 `PICA_PASSWORD`，之后打开 [Actions 工作流](https://github.com/Saber-Alter-Lily/pica-cli/actions/workflows/download.yml)，点击 **Run workflow**，填写漫画 ID 和章节范围。
 
+普通用户需要先 Fork 仓库，因为只有 Fork 的拥有者才能设置自己的 Secrets 和运行工作流。`prepare-library` 只读取收藏元数据并生成 `favorites.csv` 与 `pica-library-bundle.json`，不下载漫画图片；数据包同时包含收藏画像和最多 100 条可解释推荐，可直接导入 Pages Lite。
+
 工作流保留了原项目的收藏夹分页体验：可以一次下载指定的一页收藏（站点通常每页约 20 本），也可以输入最多 20 个漫画 ID。图片并发为 5，不设置额外任务超时，多个手动任务可并行运行。Artifact 只保留 1 天，并且不再使用第三方临时文件上传服务；图片已经压缩过，上传时关闭二次压缩以缩短等待时间。
+
+下载内部仍用漫画 ID 维护稳定的增量状态，但 Artifact 会转换为 `[归一作者] 漫画标题 [短ID]` 的可读文件夹。短 ID 用来区分重名作品；本地长期库则使用 `作者/漫画标题 [完整ID]` 视图，避免重复显示作者名。
 
 请仅下载你有权访问和保存的内容，不要将 Artifact 用于公开再分发。GitHub Free 当前包含 500 MB Artifact 存储，500–1000 MB 的单个任务可能快速占用或超过免费额度；实际可用量还受账号计划、同时保留的 Artifact 和 GitHub 政策影响。GitHub 的公开仓库标准 runner 免费，但仍受 GitHub 的[Actions 计费与用量规则](https://docs.github.com/en/billing/concepts/product-billing/github-actions)和[可接受使用政策](https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies?apiVersion=2022-11-28)约束。
 

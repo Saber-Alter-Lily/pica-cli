@@ -27,13 +27,10 @@
         <main>
             <section id="dashboard" class="view active">
                 <div class="start-grid">
-                    <button
-                        class="start-action primary-action"
-                        data-go="library"
-                    >
+                    <button class="start-action primary-action" id="first-use">
                         <span class="step">01</span>
-                        <strong>整理收藏</strong>
-                        <small>导入 CSV，按作者和 Tag 查找</small>
+                        <strong>第一次使用</strong>
+                        <small>准备收藏数据与专属推荐</small>
                     </button>
                     <button class="start-action" data-go="recommendations">
                         <span class="step">02</span>
@@ -58,7 +55,7 @@
                 <div id="summary" class="cards"></div>
                 <article class="panel compact-panel">
                     <div>
-                        <h2>导入收藏夹</h2>
+                        <h2>导入收藏库数据</h2>
                         <p class="muted">
                             文件只在当前浏览器中处理，不会上传。
                         </p>
@@ -74,8 +71,44 @@
                     </div>
                     <p id="import-result" class="muted"></p>
                 </article>
+                <dialog id="first-use-dialog">
+                    <button
+                        class="first-use-close dialog-close"
+                        aria-label="关闭"
+                    >
+                        ×
+                    </button>
+                    <h2>第一次使用</h2>
+                    <ol class="setup-steps">
+                        <li>Fork 项目到自己的 GitHub 账号。</li>
+                        <li>
+                            在 Fork 的 Actions Secrets 设置
+                            <code>PICA_ACCOUNT</code> 和
+                            <code>PICA_PASSWORD</code>。
+                        </li>
+                        <li>
+                            运行
+                            <code>prepare-library</code>，下载生成的数据包。
+                        </li>
+                        <li>
+                            回到这里导入 <code>pica-library-bundle.json</code>。
+                        </li>
+                    </ol>
+                    <a
+                        class="button-link primary"
+                        href="https://github.com/Saber-Alter-Lily/pica-cli/fork"
+                        >Fork 项目</a
+                    >
+                    <a
+                        class="button-link"
+                        href="https://github.com/Saber-Alter-Lily/pica-cli/actions/workflows/prepare-library.yml"
+                        >打开准备工作流</a
+                    >
+                </dialog>
                 <dialog id="setup-dialog">
-                    <button class="dialog-close" aria-label="关闭">×</button>
+                    <button class="setup-close dialog-close" aria-label="关闭">
+                        ×
+                    </button>
                     <h2>本地完整版</h2>
                     <ol class="setup-steps">
                         <li>下载或克隆项目。</li>

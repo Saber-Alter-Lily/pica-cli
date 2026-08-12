@@ -1,4 +1,11 @@
-const state = { mode: 'lite', records: [], authors: [], visible: [] }
+const state = {
+    mode: 'lite',
+    records: [],
+    authors: [],
+    visible: [],
+    recommendationBundle: null,
+    plannedIds: new Set()
+}
 
 const $ = (selector) => document.querySelector(selector)
 const $$ = (selector) => [...document.querySelectorAll(selector)]
@@ -156,17 +163,34 @@ async function saveLite() {
     const db = await openDb()
     const transaction = db.transaction('state', 'readwrite')
     transaction.objectStore('state').put(state.records, 'records')
+    transaction
+        .objectStore('state')
+        .put(state.recommendationBundle, 'recommendationBundle')
 }
 
 async function loadLite() {
     const db = await openDb()
     return new Promise((resolve) => {
-        const request = db
-            .transaction('state')
-            .objectStore('state')
-            .get('records')
-        request.onsuccess = () => resolve(request.result || [])
-        request.onerror = () => resolve([])
+        const store = db.transaction('state').objectStore('state')
+        const recordsRequest = store.get('records')
+        const bundleRequest = store.get('recommendationBundle')
+        let records = []
+        let bundle = null
+        let completed = 0
+        const finish = () => {
+            completed += 1
+            if (completed === 2) resolve({ records, bundle })
+        }
+        recordsRequest.onsuccess = () => {
+            records = recordsRequest.result || []
+            finish()
+        }
+        recordsRequest.onerror = finish
+        bundleRequest.onsuccess = () => {
+            bundle = bundleRequest.result || null
+            finish()
+        }
+        bundleRequest.onerror = finish
     })
 }
 
@@ -288,7 +312,7 @@ function renderRecommendations(result) {
             <p>${escapeHtml(comic.canonicalAuthor || comic.author)}</p>
             <ul class="reason-list">${reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join('')}</ul>
             <p class="muted">匹配分 ${score} · 爱心 ${Number(comic.totalLikes || 0).toLocaleString()}</p>
-            <button data-result-download="${comic.comicId}">下载</button>
+            <button data-result-download="${comic.comicId}">${state.mode === 'connected' ? '下载' : '加入下载计划'}</button>
         </article>`
         )
         .join('')
@@ -326,7 +350,9 @@ async function detectMode() {
         $('#sync-button').disabled = true
         $('#search-message').textContent =
             '站内搜索需要运行 pica-library serve 连接本地引擎。'
-        state.records = await loadLite()
+        const saved = await loadLite()
+        state.records = saved.records
+        state.recommendationBundle = saved.bundle
         liteSummary()
         renderComics(state.records)
         renderAuthors()
@@ -341,15 +367,31 @@ $$('[data-go]').forEach((button) =>
     button.addEventListener('click', () => showView(button.dataset.go))
 )
 $('#show-setup').addEventListener('click', () => $('#setup-dialog').showModal())
-$('.dialog-close').addEventListener('click', () => $('#setup-dialog').close())
+$('.setup-close').addEventListener('click', () => $('#setup-dialog').close())
+$('#first-use').addEventListener('click', () =>
+    $('#first-use-dialog').showModal()
+)
+$('.first-use-close').addEventListener('click', () =>
+    $('#first-use-dialog').close()
+)
 
 $('#import-button').addEventListener('click', async () => {
     const file = $('#import-file').files[0]
     if (!file) return
     const text = await file.text()
-    const records = file.name.endsWith('.json')
-        ? JSON.parse(text)
-        : recordsFromCsv(text)
+    const parsed = file.name.endsWith('.json') ? JSON.parse(text) : null
+    const bundle =
+        parsed?.kind === 'pica-library-bundle' &&
+        Array.isArray(parsed.favorites)
+            ? parsed
+            : null
+    const records = bundle
+        ? bundle.favorites
+        : parsed
+          ? parsed
+          : recordsFromCsv(text)
+    if (!Array.isArray(records)) throw new Error('无法识别这个收藏数据文件。')
+    state.recommendationBundle = bundle
     if (state.mode === 'connected') {
         const result = await api('/api/v1/import', {
             method: 'POST',
@@ -366,7 +408,11 @@ $('#import-button').addEventListener('click', async () => {
         renderComics(records)
         renderAuthors()
         $('#import-result').textContent =
-            `已在浏览器本地导入 ${records.length} 条。`
+            `已在浏览器本地导入 ${records.length} 条${bundle ? `，包含 ${bundle.recommendations?.length || 0} 条推荐` : ''}。`
+        if (bundle) {
+            renderRecommendations(bundle)
+            showView('recommendations')
+        }
     }
 })
 
@@ -542,10 +588,16 @@ $('#export-plan').addEventListener('click', () => {
     const comics = state.visible.filter(
         (comic) => !selected.length || selected.includes(comic.comicId)
     )
+    const comicIds = [
+        ...new Set([
+            ...comics.map((comic) => comic.comicId),
+            ...state.plannedIds
+        ])
+    ]
     downloadJson('download-plan.json', {
         schemaVersion: 1,
         createdAt: new Date().toISOString(),
-        comicIds: comics.map((comic) => comic.comicId)
+        comicIds
     })
 })
 
@@ -605,6 +657,12 @@ $('#search-results').addEventListener('click', async (event) => {
 
 $('#recommend-button').addEventListener('click', async () => {
     if (state.mode !== 'connected') {
+        if (state.recommendationBundle) {
+            renderRecommendations(state.recommendationBundle)
+            $('#recommend-message').textContent =
+                `数据包包含 ${state.recommendationBundle.recommendations?.length || 0} 条站内关联推荐。`
+            return
+        }
         $('#recommend-message').textContent =
             state.records.length === 0
                 ? '先在概览导入收藏夹，再连接本地完整版获取站内候选。'
@@ -655,6 +713,12 @@ $('#recommend-button').addEventListener('click', async () => {
 $('#recommend-results').addEventListener('click', (event) => {
     const comicId = event.target.dataset.resultDownload
     if (!comicId) return
+    if (state.mode !== 'connected') {
+        state.plannedIds.add(comicId)
+        event.target.disabled = true
+        event.target.textContent = '已加入计划'
+        return
+    }
     event.target.disabled = true
     event.target.textContent = '下载中…'
     api('/api/v1/download', {

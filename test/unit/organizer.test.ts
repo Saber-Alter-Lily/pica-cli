@@ -2,7 +2,11 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { organizeLibraryViews } from '../../src/library/organizer'
+import {
+    materializePortableLibrary,
+    organizeLibraryViews,
+    portableComicFolder
+} from '../../src/library/organizer'
 import type { StoredComic } from '../../src/library/types'
 
 describe('library organizer', () => {
@@ -33,6 +37,14 @@ describe('library organizer', () => {
             expect(result.linked + result.manifests).toBe(2)
             expect(
                 fs.existsSync(path.join(result.viewsRoot, 'index.json'))
+            ).toBe(true)
+            const portable = path.join(dir, 'portable')
+            expect(portableComicFolder(comic)).toBe('[Alice] A _ Work [c1]')
+            expect(
+                materializePortableLibrary(dir, [comic], portable).copied
+            ).toBe(1)
+            expect(
+                fs.existsSync(path.join(portable, '[Alice] A _ Work [c1]'))
             ).toBe(true)
         } finally {
             fs.rmSync(dir, { recursive: true, force: true })
